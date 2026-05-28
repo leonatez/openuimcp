@@ -7,16 +7,19 @@ import { useSearchParams } from "next/navigation";
 
 import { useBrainstormWs } from "@/hooks/use-brainstorm-ws";
 import type { BrainstormAction, ChatMessage, FileNode, DataPreview } from "@/hooks/use-brainstorm-ws";
+import type { SalesChartData } from "@/components/sales-chart";
 import FileTree from "@/components/file-tree";
 import ChatHistory from "@/components/chat-history";
 import UiRenderer from "@/components/ui-renderer";
 import DataPreviewPanel from "@/components/data-preview";
+import SalesChart from "@/components/sales-chart";
 
 interface BrainstormState {
   uiSpec: string | null;
   messages: ChatMessage[];
   fileTree: FileNode[];
   dataPreview: DataPreview | null;
+  chartData: SalesChartData | null;
 }
 
 const INITIAL_STATE: BrainstormState = {
@@ -24,18 +27,21 @@ const INITIAL_STATE: BrainstormState = {
   messages: [],
   fileTree: [],
   dataPreview: null,
+  chartData: null,
 };
 
 function reducer(state: BrainstormState, action: BrainstormAction): BrainstormState {
   switch (action.type) {
     case "SET_SPEC":
-      return { ...state, uiSpec: action.spec, dataPreview: null };
+      return { ...state, uiSpec: action.spec, dataPreview: null, chartData: null };
     case "ADD_MESSAGE":
       return { ...state, messages: [...state.messages, action.msg] };
     case "SET_FILE_TREE":
       return { ...state, fileTree: action.tree };
     case "SET_DATA_PREVIEW":
-      return { ...state, dataPreview: action.preview, uiSpec: null };
+      return { ...state, dataPreview: action.preview, uiSpec: null, chartData: null };
+    case "SET_CHART":
+      return { ...state, chartData: action.chart, uiSpec: null, dataPreview: null };
     default:
       return state;
   }
@@ -53,6 +59,8 @@ function BrainstormUI() {
 
   const rightPanel = state.uiSpec ? (
     <UiRenderer spec={state.uiSpec} />
+  ) : state.chartData ? (
+    <SalesChart data={state.chartData} />
   ) : state.dataPreview ? (
     <DataPreviewPanel preview={state.dataPreview} />
   ) : (

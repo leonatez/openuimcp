@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
+import type { SalesChartData } from "@/components/sales-chart";
 
 export type ChatMessage = {
   role: "user" | "assistant";
@@ -23,7 +24,8 @@ export type BrainstormAction =
   | { type: "SET_SPEC"; spec: string }
   | { type: "ADD_MESSAGE"; msg: ChatMessage }
   | { type: "SET_FILE_TREE"; tree: FileNode[] }
-  | { type: "SET_DATA_PREVIEW"; preview: DataPreview };
+  | { type: "SET_DATA_PREVIEW"; preview: DataPreview }
+  | { type: "SET_CHART"; chart: SalesChartData };
 
 /** Connects to the MCP server WebSocket and dispatches incoming messages. */
 export function useBrainstormWs(port: number, dispatch: (action: BrainstormAction) => void) {
@@ -78,6 +80,18 @@ export function useBrainstormWs(port: number, dispatch: (action: BrainstormActio
                 columns: msg.columns as string[],
                 rows: msg.rows as Record<string, unknown>[],
               },
+            });
+          break;
+        case "chart_data":
+          if (
+            typeof msg.title === "string" &&
+            typeof msg.x_key === "string" &&
+            typeof msg.y_key === "string" &&
+            Array.isArray(msg.rows)
+          )
+            dispatchRef.current({
+              type: "SET_CHART",
+              chart: msg as unknown as SalesChartData,
             });
           break;
       }
