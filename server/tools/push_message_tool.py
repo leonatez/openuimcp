@@ -23,7 +23,7 @@ def register_push_message(mcp, broadcast):
             try:
                 await broadcast(msg)
             except Exception as e:
-                print(f"[brainstorm-ui] push_message broadcast error: {e}", file=sys.stderr)
+                print(f"[visualize-ui] push_message broadcast error: {e}", file=sys.stderr)
 
         asyncio.create_task(_send())
         return "Message pushed to browser."

@@ -18,7 +18,7 @@ def register_render_ui(mcp, broadcast):
             try:
                 await broadcast({"type": "render_ui", "spec": spec})
             except Exception as e:
-                print(f"[brainstorm-ui] render_ui broadcast error: {e}", file=sys.stderr)
+                print(f"[visualize-ui] render_ui broadcast error: {e}", file=sys.stderr)
 
         asyncio.create_task(_send())
         return "UI rendered in browser panel."

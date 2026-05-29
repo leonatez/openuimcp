@@ -5,8 +5,8 @@ import "@openuidev/react-ui/styles/index.css";
 import { useReducer, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { useBrainstormWs } from "@/hooks/use-brainstorm-ws";
-import type { BrainstormAction, ChatMessage, FileNode, DataPreview } from "@/hooks/use-brainstorm-ws";
+import { useVisualizeWs } from "@/hooks/use-visualize-ws";
+import type { VisualizeAction, ChatMessage, FileNode, DataPreview } from "@/hooks/use-visualize-ws";
 import type { SalesChartData } from "@/components/sales-chart";
 import FileTree from "@/components/file-tree";
 import ChatHistory from "@/components/chat-history";
@@ -14,7 +14,7 @@ import UiRenderer from "@/components/ui-renderer";
 import DataPreviewPanel from "@/components/data-preview";
 import SalesChart from "@/components/sales-chart";
 
-interface BrainstormState {
+interface VisualizeState {
   uiSpec: string | null;
   messages: ChatMessage[];
   fileTree: FileNode[];
@@ -22,7 +22,7 @@ interface BrainstormState {
   chartData: SalesChartData | null;
 }
 
-const INITIAL_STATE: BrainstormState = {
+const INITIAL_STATE: VisualizeState = {
   uiSpec: null,
   messages: [],
   fileTree: [],
@@ -30,39 +30,40 @@ const INITIAL_STATE: BrainstormState = {
   chartData: null,
 };
 
-function reducer(state: BrainstormState, action: BrainstormAction): BrainstormState {
+function reducer(state: VisualizeState, action: VisualizeAction): VisualizeState {
   switch (action.type) {
     case "SET_SPEC":
-      return { ...state, uiSpec: action.spec, dataPreview: null, chartData: null };
+      return { ...state, uiSpec: action.spec, dataPreview: null };
     case "ADD_MESSAGE":
       return { ...state, messages: [...state.messages, action.msg] };
     case "SET_FILE_TREE":
       return { ...state, fileTree: action.tree };
     case "SET_DATA_PREVIEW":
-      return { ...state, dataPreview: action.preview, uiSpec: null, chartData: null };
+      return { ...state, dataPreview: action.preview, uiSpec: null };
     case "SET_CHART":
-      return { ...state, chartData: action.chart, uiSpec: null, dataPreview: null };
+      return { ...state, chartData: action.chart };
     default:
       return state;
   }
 }
 
-const WS_PORT = Number(process.env.NEXT_PUBLIC_MCP_WS_PORT ?? 8765);
+const WS_PORT = Number(process.env.NEXT_PUBLIC_MCP_WS_PORT ?? 8766);
 
-function BrainstormUI() {
+function VisualizeUI() {
   const params = useSearchParams();
   const project = params.get("project") ?? "";
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
 
-  const stableDispatch = useCallback((action: BrainstormAction) => dispatch(action), []);
-  useBrainstormWs(WS_PORT, stableDispatch);
+  const stableDispatch = useCallback((action: VisualizeAction) => dispatch(action), []);
+  useVisualizeWs(WS_PORT, stableDispatch);
 
-  const rightPanel = state.uiSpec ? (
-    <UiRenderer spec={state.uiSpec} />
-  ) : state.chartData ? (
-    <SalesChart data={state.chartData} />
-  ) : state.dataPreview ? (
-    <DataPreviewPanel preview={state.dataPreview} />
+  const hasContent = state.uiSpec || state.chartData || state.dataPreview;
+  const rightPanel = hasContent ? (
+    <div className="flex flex-col gap-6">
+      {state.chartData && <SalesChart data={state.chartData} />}
+      {state.uiSpec && <UiRenderer spec={state.uiSpec} />}
+      {state.dataPreview && <DataPreviewPanel preview={state.dataPreview} />}
+    </div>
   ) : (
     <p className="text-neutral-600 text-xs mt-4">
       Waiting for Claude to render UI or parse a data file…
@@ -74,7 +75,7 @@ function BrainstormUI() {
       {/* Header */}
       <header className="shrink-0 px-4 py-2 border-b border-neutral-800 flex items-center gap-3">
         <span className="text-neutral-400 text-xs font-semibold tracking-widest uppercase">
-          brainstorm-ui
+          visualize-ui
         </span>
         {project && (
           <span className="text-neutral-600 text-xs truncate" title={project}>
@@ -111,7 +112,7 @@ function BrainstormUI() {
 export default function Page() {
   return (
     <Suspense fallback={<div className="h-screen bg-neutral-950" />}>
-      <BrainstormUI />
+      <VisualizeUI />
     </Suspense>
   );
 }

@@ -19,11 +19,11 @@ from tools.push_message_tool import register_push_message  # type: ignore[import
 from tools.file_tree_tool import register_file_tree  # type: ignore[import]
 from tools.data_parser_tool import register_data_parser  # type: ignore[import]
 
-mcp = FastMCP("brainstorm-ui")
-WS_PORT = int(os.getenv("BRAINSTORM_MCP_PORT", "8765"))
+mcp = FastMCP("visualize-ui")
+WS_PORT = int(os.getenv("VISUALIZE_MCP_PORT", "8766"))
 # Sandbox root: all file operations are restricted to this directory.
-# Set via env at startup (start-ui.sh exports BRAINSTORM_PROJECT_ROOT).
-PROJECT_ROOT = os.path.realpath(os.getenv("BRAINSTORM_PROJECT_ROOT", os.getcwd()))
+# Set via env at startup (start-ui.sh exports VISUALIZE_PROJECT_ROOT).
+PROJECT_ROOT = os.path.realpath(os.getenv("VISUALIZE_PROJECT_ROOT", os.getcwd()))
 
 # Tracks all connected browser WebSocket clients
 _clients: set = set()

@@ -45,7 +45,7 @@ def register_file_tree(mcp, broadcast, project_root: str):
                 await broadcast({"type": "file_tree", "tree": tree})
             except Exception as e:
                 import sys
-                print(f"[brainstorm-ui] broadcast error: {e}", file=sys.stderr)
+                print(f"[visualize-ui] broadcast error: {e}", file=sys.stderr)
 
         asyncio.create_task(_send())
         return f"File tree sent: {len(tree)} top-level entries."

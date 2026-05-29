@@ -1,4 +1,4 @@
-import type { DataPreview as DataPreviewType } from "@/hooks/use-brainstorm-ws";
+import type { DataPreview as DataPreviewType } from "@/hooks/use-visualize-ws";
 
 interface DataPreviewProps {
   preview: DataPreviewType;

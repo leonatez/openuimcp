@@ -20,15 +20,15 @@ export type DataPreview = {
   rows: Record<string, unknown>[];
 };
 
-export type BrainstormAction =
+export type VisualizeAction =
   | { type: "SET_SPEC"; spec: string }
   | { type: "ADD_MESSAGE"; msg: ChatMessage }
   | { type: "SET_FILE_TREE"; tree: FileNode[] }
   | { type: "SET_DATA_PREVIEW"; preview: DataPreview }
   | { type: "SET_CHART"; chart: SalesChartData };
 
-/** Connects to the MCP server WebSocket and dispatches incoming messages. */
-export function useBrainstormWs(port: number, dispatch: (action: BrainstormAction) => void) {
+/** Connects to the visualize-ui MCP server WebSocket and dispatches incoming messages. */
+export function useVisualizeWs(port: number, dispatch: (action: VisualizeAction) => void) {
   const wsRef = useRef<WebSocket | null>(null);
   const dispatchRef = useRef(dispatch);
   const isDestroyed = useRef(false);
@@ -46,7 +46,6 @@ export function useBrainstormWs(port: number, dispatch: (action: BrainstormActio
       } catch {
         return;
       }
-      // Runtime type guards before dispatch (L5)
       switch (msg.type) {
         case "render_ui":
           if (typeof msg.spec === "string")
@@ -98,7 +97,6 @@ export function useBrainstormWs(port: number, dispatch: (action: BrainstormActio
     };
 
     ws.onclose = () => {
-      // Only reconnect if the hook is still mounted (H1: prevent post-unmount leak)
       if (!isDestroyed.current) setTimeout(connect, 2000);
     };
   }, [port]);

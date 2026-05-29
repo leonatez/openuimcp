@@ -1,10 +1,10 @@
-import type { ChatMessage } from "@/hooks/use-brainstorm-ws";
+import type { ChatMessage } from "@/hooks/use-visualize-ws";
 
 interface ChatHistoryProps {
   messages: ChatMessage[];
 }
 
-/** Mirrors the terminal brainstorm conversation. */
+/** Mirrors the terminal visualize session conversation. */
 export default function ChatHistory({ messages }: ChatHistoryProps) {
   if (!messages.length) {
     return <p className="text-neutral-600 text-xs mt-4">Waiting for chat messages…</p>;

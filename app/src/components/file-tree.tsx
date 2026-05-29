@@ -1,5 +1,5 @@
 "use client";
-import type { FileNode } from "@/hooks/use-brainstorm-ws";
+import type { FileNode } from "@/hooks/use-visualize-ws";
 
 interface FileTreeProps {
   nodes: FileNode[];
