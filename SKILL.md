@@ -27,7 +27,28 @@ Invoke `/visualize` when you need to:
 Before anything else, launch the browser UI:
 
 1. Run: `bash ~/.claude/skills/visualize/scripts/start-ui.sh "$(pwd)"`
-2. Call `mcp__visualize-ui__list_project_files` with `project_dir` = current working directory
+2. Send the project file tree to the sidebar:
+```bash
+python3 -c "
+import os, json, urllib.request
+from pathlib import Path
+IGNORED = {'.git','node_modules','__pycache__','.next','dist','.venv','venv'}
+def tree(p, d=0):
+    if d > 4: return []
+    nodes = []
+    try: entries = sorted(Path(p).iterdir(), key=lambda x:(x.is_file(),x.name))
+    except: return []
+    for e in entries:
+        if e.name.startswith('.') or e.name in IGNORED: continue
+        if e.is_dir(): nodes.append({'name':e.name,'path':str(e),'type':'dir','children':tree(e,d+1)})
+        else: nodes.append({'name':e.name,'path':str(e),'type':'file'})
+    return nodes
+msg = json.dumps({'type':'file_tree','tree':tree('$(pwd)')}).encode()
+urllib.request.urlopen(urllib.request.Request('http://localhost:8767/list_files',
+  data=json.dumps({'project_dir':'$(pwd)'}).encode(),
+  headers={'Content-Type':'application/json'}))
+"
+```
 3. Confirm to user: "Visualize UI is live at http://localhost:3001 — open it in your browser."
 
 ### Step 1 — Understand What to Visualize
@@ -38,32 +59,56 @@ Ask the user (or infer from context):
 
 ### Step 2 — Parse Data
 If user references a data file (`@file.csv`, `@report.xlsx`, etc.):
-```
-mcp__visualize-ui__parse_data_file(path="/absolute/path/to/file", project_dir="/absolute/project/dir")
+```bash
+curl -s -X POST http://localhost:8767/parse_file \
+  -H "Content-Type: application/json" \
+  -d '{"path":"/absolute/path/to/file.csv"}'
 ```
 The browser panel will automatically show a data preview.
 
-For computed/inline data, use `render_ui` with an OpenUI Lang table spec.
+For computed/inline data, use `render_ui` via the HTTP relay (see Step 3).
 
 ### Step 3 — Render Visualizations
-Use `mcp__visualize-ui__render_ui` to display structured outputs in the browser.
+Post an OpenUI Lang spec to the relay to display structured output in the browser.
 
 Spec must be valid OpenUI Lang v0.5 — must start with `root = `.
 
 **Example — comparison table:**
-```
-root = Table([Col("Option", ["A","B","C"]), Col("Complexity", ["Low","Med","High"]), Col("Risk", ["Low","High","Med"])])
+```bash
+curl -s -X POST http://localhost:8767/render_ui \
+  -H "Content-Type: application/json" \
+  -d '{"spec":"root = Table([Col(\"Option\",[\"A\",\"B\"]),Col(\"Risk\",[\"Low\",\"High\"])])"}'
 ```
 
-**Example — summary stack:**
+**Example — daily sales bar chart:**
+```bash
+python3 -c "
+import json, urllib.request
+rows = [{'date':'Jan','revenue':12.5},{'date':'Feb','revenue':18.2}]
+msg = {'type':'chart_data','title':'Monthly Revenue','x_key':'date','y_key':'revenue','rows':rows}
+urllib.request.urlopen(urllib.request.Request('http://localhost:8767',
+  data=json.dumps(msg).encode(), headers={'Content-Type':'application/json'}))
+"
 ```
-root = Stack([Card("Total Revenue", "₫125,450,000"), Card("Orders", "40"), Card("Avg Order", "₫3,136,250")])
+
+**Example — joined/computed data as scrollable table:**
+```bash
+python3 -c "
+import json, urllib.request
+cols = ['Name','Score','Grade']
+rows = [{'Name':'Alice','Score':'95','Grade':'A'},{'Name':'Bob','Score':'78','Grade':'B'}]
+msg = {'type':'data_preview','filename':'results','columns':cols,'rows':rows}
+urllib.request.urlopen(urllib.request.Request('http://localhost:8767',
+  data=json.dumps(msg).encode(), headers={'Content-Type':'application/json'}))
+"
 ```
 
 ### Step 4 — Mirror Chat to Browser
 After every response, push the message to the browser chat panel:
-```
-mcp__visualize-ui__push_message(role="assistant", content="<your response text>")
+```bash
+curl -s -X POST http://localhost:8767/push_message \
+  -H "Content-Type: application/json" \
+  -d "{\"role\":\"assistant\",\"content\":\"<your response text>\"}"
 ```
 
 ### Step 5 — Iterate
@@ -73,41 +118,74 @@ Ask the user what they want to explore next. Offer:
 - Comparisons across dimensions
 - Export-ready summary
 
-## Browser UI Tools
+## Browser UI — HTTP Relay API
 
-### `mcp__visualize-ui__push_message`
-Mirrors conversation to the browser chat panel. Call after **every** response.
-```
-mcp__visualize-ui__push_message(role="assistant", content="<your response text>")
+The relay runs at **http://localhost:8767** (started automatically by `start-ui.sh`).
+No MCP server or Claude Code restart needed — it works out of the box.
+
+### `POST /push_message`
+Mirrors a chat message to the browser chat panel. Call after **every** response.
+```bash
+curl -s -X POST http://localhost:8767/push_message \
+  -H "Content-Type: application/json" \
+  -d '{"role":"assistant","content":"Your message here"}'
 ```
 
-### `mcp__visualize-ui__render_ui`
+### `POST /render_ui`
 Renders an OpenUI Lang component in the browser output panel.
-```
-mcp__visualize-ui__render_ui(spec="root = Table([...])")
-```
-
-### `mcp__visualize-ui__parse_data_file`
-Parses a CSV/Excel/PDF and sends a live data preview to the browser.
-```
-mcp__visualize-ui__parse_data_file(path="/absolute/path/to/file", project_dir="/absolute/project/dir")
+```bash
+curl -s -X POST http://localhost:8767/render_ui \
+  -H "Content-Type: application/json" \
+  -d '{"spec":"root = Table([Col(\"Col1\",[\"v1\",\"v2\"])])"}'
 ```
 
-### `mcp__visualize-ui__list_project_files`
+### `POST /` (raw broadcast)
+Sends any JSON message directly to all browser clients. Use for `chart_data` and `data_preview`.
+```bash
+# chart_data — renders a line/bar chart
+python3 -c "
+import json, urllib.request
+msg = {'type':'chart_data','title':'Sales','x_key':'date','y_key':'revenue',
+       'rows':[{'date':'Jan','revenue':10},{'date':'Feb','revenue':20}]}
+urllib.request.urlopen(urllib.request.Request('http://localhost:8767',
+  data=json.dumps(msg).encode(), headers={'Content-Type':'application/json'}))
+"
+
+# data_preview — renders a scrollable table (all rows, no pagination limit)
+python3 -c "
+import json, urllib.request
+msg = {'type':'data_preview','filename':'my_data','columns':['A','B'],
+       'rows':[{'A':'1','B':'2'},{'A':'3','B':'4'}]}
+urllib.request.urlopen(urllib.request.Request('http://localhost:8767',
+  data=json.dumps(msg).encode(), headers={'Content-Type':'application/json'}))
+"
+```
+
+### `POST /parse_file`
+Parses a CSV/Excel/PDF on disk and sends a data preview to the browser.
+```bash
+curl -s -X POST http://localhost:8767/parse_file \
+  -H "Content-Type: application/json" \
+  -d '{"path":"/absolute/path/to/file.csv"}'
+```
+
+### `POST /list_files`
 Sends the project file tree to the browser sidebar.
-```
-mcp__visualize-ui__list_project_files(project_dir="/absolute/project/dir")
+```bash
+curl -s -X POST http://localhost:8767/list_files \
+  -H "Content-Type: application/json" \
+  -d '{"project_dir":"/absolute/project/dir"}'
 ```
 
-### When to call `render_ui` vs `parse_data_file` vs plain text
+### When to use which endpoint
 
-| Situation | Action |
-|-----------|--------|
-| User references a data file | `parse_data_file` |
-| Computed/derived data to show as table | `render_ui` |
-| Chart or visual comparison | `render_ui` |
-| Short conversational response | plain text + `push_message` |
-| Summary metrics / KPIs | `render_ui` with Card stack |
+| Situation | Endpoint |
+|-----------|----------|
+| User references a data file | `POST /parse_file` |
+| Computed rows to show as scrollable table | `POST /` with `data_preview` |
+| OpenUI Lang table / card / stack | `POST /render_ui` |
+| Line or bar chart from data | `POST /` with `chart_data` |
+| Short conversational response | plain text + `POST /push_message` |
 
 ## Constraints
 
