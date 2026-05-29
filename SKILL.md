@@ -75,9 +75,12 @@ Spec must be valid OpenUI Lang v0.5 — must start with `root = `.
 
 **Example — comparison table:**
 ```bash
-curl -s -X POST http://localhost:8767/render_ui \
-  -H "Content-Type: application/json" \
-  -d '{"spec":"root = Table([Col(\"Option\",[\"A\",\"B\"]),Col(\"Risk\",[\"Low\",\"High\"])])"}'
+python3 -c "
+import json, urllib.request
+spec = 'root = Table([Col(\"Option\",[\"A\",\"B\"]),Col(\"Risk\",[\"Low\",\"High\"])])'
+urllib.request.urlopen(urllib.request.Request('http://localhost:8767/render_ui',
+  data=json.dumps({'spec':spec}).encode(), headers={'Content-Type':'application/json'}))
+"
 ```
 
 **Example — daily sales bar chart:**
@@ -133,10 +136,14 @@ curl -s -X POST http://localhost:8767/push_message \
 
 ### `POST /render_ui`
 Renders an OpenUI Lang component in the browser output panel.
+Use `python3` to avoid shell escaping issues with quotes inside the spec:
 ```bash
-curl -s -X POST http://localhost:8767/render_ui \
-  -H "Content-Type: application/json" \
-  -d '{"spec":"root = Table([Col(\"Col1\",[\"v1\",\"v2\"])])"}'
+python3 -c "
+import json, urllib.request
+spec = 'root = Table([Col(\"Col1\",[\"v1\",\"v2\"])])'
+urllib.request.urlopen(urllib.request.Request('http://localhost:8767/render_ui',
+  data=json.dumps({'spec':spec}).encode(), headers={'Content-Type':'application/json'}))
+"
 ```
 
 ### `POST /` (raw broadcast)
